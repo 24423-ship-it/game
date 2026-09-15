@@ -1,0 +1,761 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Game Coding Project: Tactical Portal</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Roboto+Condensed:wght@300;400;700&display=swap" rel="stylesheet">
+<style>
+:root {
+    --military-green: #3a4a34;
+    --military-green-light: #526649;
+    --accent-red: #d32f2f;
+    --bg-dark: #0a0a0a;
+    --text-main: #e0e0e0;
+}
+body { font-family: 'Roboto Condensed', sans-serif; background-color: var(--bg-dark); color: var(--text-main); overflow-x: hidden; }
+h1, h2, h3, .font-head { font-family: 'Bebas Neue', sans-serif; letter-spacing: 1px; }
+.clip-box { clip-path: polygon(20px 0, 100% 0, 100% calc(100% - 20px), calc(100% - 20px) 100%, 0 100%, 0 20px); }
+.clip-button { clip-path: polygon(15px 0, 100% 0, 100% calc(100% - 15px), calc(100% - 15px) 100%, 0 100%, 0 15px); }
+.clip-iframe { clip-path: polygon(30px 0, 100% 0, 100% calc(100% - 30px), calc(100% - 30px) 100%, 0 100%, 0 30px); }
+.tactical-border { position: relative; }
+.tactical-border::before { content: ''; position: absolute; top: 0; left: 0; width: 20px; height: 20px; border-top: 2px solid var(--military-green-light); border-left: 2px solid var(--military-green-light); z-index: 10; }
+.scanlines::before { content: " "; display: block; position: absolute; top: 0; left: 0; bottom: 0; right: 0; background: linear-gradient(rgba(18, 16, 16, 0) 50%, rgba(0, 0, 0, 0.25) 50%), linear-gradient(90deg, rgba(255, 0, 0, 0.06), rgba(0, 255, 0, 0.02), rgba(0, 0, 255, 0.06)); z-index: 2; background-size: 100% 2px, 3px 100%; pointer-events: none; }
+::-webkit-scrollbar { width: 8px; }
+::-webkit-scrollbar-track { background: #111; }
+::-webkit-scrollbar-thumb { background: var(--military-green); }
+::-webkit-scrollbar-thumb:hover { background: var(--accent-red); }
+@keyframes blink { 0%, 100% { opacity: 1; } 50% { opacity: 0; } }
+.animate-blink { animation: blink 1s infinite; }
+.section-title { border-bottom: 2px solid var(--military-green); display: inline-block; position: relative; padding-bottom: 4px; }
+.section-title::after { content: ''; position: absolute; bottom: -2px; right: -20px; width: 10px; height: 2px; background-color: var(--accent-red); }
+
+/* ระบบสลับหน้าแบบ SPA */
+.page-view { display: none; }
+.page-view.active { display: block; animation: fadeIn 0.3s ease-in-out; }
+@keyframes fadeIn { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }
+.nav-link.current { color: #ef4444; }
+</style>
+</head>
+<body class="antialiased selection:bg-red-800 selection:text-white">
+
+    <!-- ================= LOGIN SCREEN ================= -->
+    <div id="login-screen" class="fixed inset-0 z-50 flex items-center justify-center bg-[#050505] scanlines">
+        <div class="absolute inset-0 opacity-20" style="background-image: linear-gradient(#3a4a34 1px, transparent 1px), linear-gradient(90deg, #3a4a34 1px, transparent 1px); background-size: 40px 40px;"></div>
+
+        <div class="relative z-10 w-full max-w-md p-8 bg-[#111] border border-[#333] clip-box tactical-border shadow-[0_0_30px_rgba(58,74,52,0.3)]">
+            <div id="login-view">
+                <div class="text-center mb-8">
+                    <h1 class="font-head text-5xl text-white tracking-widest">SYSTEM <span class="text-red-600">LOGIN</span></h1>
+                    <p class="text-[#526649] text-sm mt-2 tracking-widest">เข้าสู่ระบบเพื่อใช้งานเว็บไซต์</p>
+                </div>
+                <div class="mb-6 p-3 bg-black/50 border border-[#333] font-mono text-xs h-20 overflow-hidden relative">
+                    <div class="absolute bottom-3 left-3 flex flex-col justify-end text-green-500">
+                        <p class="opacity-50">> กำลังเชื่อมต่อระบบ...</p>
+                        <p class="opacity-75">> ตรวจสอบความปลอดภัย...</p>
+                        <p class="text-green-400 font-bold animate-pulse">> กรุณากรอกข้อมูลเข้าสู่ระบบ_</p>
+                    </div>
+                </div>
+                <form id="login-form" class="space-y-6">
+                    <div>
+                        <label class="block text-gray-500 text-xs font-bold mb-2 uppercase tracking-wider">ชื่อผู้ใช้</label>
+                        <input type="text" id="username" value="COMMANDER" class="w-full bg-[#0a0a0a] border border-[#333] focus:border-[#526649] text-green-500 font-mono px-4 py-3 outline-none transition-colors" required>
+                    </div>
+                    <div>
+                        <label class="block text-gray-500 text-xs font-bold mb-2 uppercase tracking-wider">รหัสผ่าน</label>
+                        <input type="password" id="password" value="admin123" class="w-full bg-[#0a0a0a] border border-[#333] focus:border-red-600 text-red-500 font-mono px-4 py-3 outline-none transition-colors" required>
+                    </div>
+                    <div id="login-error" class="hidden text-red-500 text-sm font-bold text-center bg-red-900/20 py-2">เข้าสู่ระบบไม่สำเร็จ ข้อมูลไม่ถูกต้อง</div>
+                    <button type="submit" class="w-full clip-button bg-[#3a4a34] hover:bg-red-700 text-white font-head text-2xl py-3 transition-all duration-300 hover:shadow-[0_0_15px_rgba(211,47,47,0.5)] flex justify-center items-center gap-2">
+                        เข้าสู่ระบบ
+                        <span class="w-2 h-2 bg-white rounded-full animate-blink"></span>
+                    </button>
+                    <div class="text-center mt-6 pt-4 border-t border-[#333]">
+                        <p class="text-sm text-gray-500 font-mono mb-2">ยังไม่มีรหัสประจำตัว?</p>
+                        <a href="#" id="show-register" class="text-green-500 hover:text-green-400 text-sm font-bold tracking-wider uppercase transition-colors">>> สมัครสมาชิกใหม่</a>
+                    </div>
+                    <p class="text-center text-xs text-gray-600 mt-4">* บัญชีทดสอบ: COMMANDER / admin123</p>
+                </form>
+            </div>
+
+            <div id="register-view" class="hidden">
+                <div class="text-center mb-6">
+                    <h1 class="font-head text-5xl text-white tracking-widest">สมัคร<span class="text-blue-500">สมาชิก</span></h1>
+                    <p class="text-[#495c66] text-sm mt-2 tracking-widest">กรอกข้อมูลเพื่อสมัครสมาชิกใหม่</p>
+                </div>
+                <div class="mb-6 p-3 bg-black/50 border border-[#333] font-mono text-xs h-20 overflow-hidden relative">
+                    <div class="absolute bottom-3 left-3 flex flex-col justify-end text-blue-500">
+                        <p class="opacity-50">> กำลังเตรียมระบบสมัครสมาชิก...</p>
+                        <p class="opacity-75">> สร้างบัญชีใหม่...</p>
+                        <p class="text-blue-400 font-bold animate-pulse">> กรุณากรอกข้อมูล_</p>
+                    </div>
+                </div>
+                <form id="register-form" class="space-y-4">
+                    <div>
+                        <label class="block text-gray-500 text-xs font-bold mb-1 uppercase tracking-wider">ตั้งชื่อผู้ใช้</label>
+                        <input type="text" id="reg-username" class="w-full bg-[#0a0a0a] border border-[#333] focus:border-blue-500 text-blue-400 font-mono px-3 py-2 outline-none transition-colors" required>
+                    </div>
+                    <div>
+                        <label class="block text-gray-500 text-xs font-bold mb-1 uppercase tracking-wider">ตั้งรหัสผ่าน</label>
+                        <input type="password" id="reg-password" class="w-full bg-[#0a0a0a] border border-[#333] focus:border-blue-500 text-blue-400 font-mono px-3 py-2 outline-none transition-colors" required minlength="4">
+                    </div>
+                    <div>
+                        <label class="block text-gray-500 text-xs font-bold mb-1 uppercase tracking-wider">ยืนยันรหัสผ่าน</label>
+                        <input type="password" id="reg-confirm" class="w-full bg-[#0a0a0a] border border-[#333] focus:border-blue-500 text-blue-400 font-mono px-3 py-2 outline-none transition-colors" required minlength="4">
+                    </div>
+                    <div id="register-error" class="hidden text-red-500 text-xs font-bold text-center bg-red-900/20 py-2 mt-2"></div>
+                    <div id="register-success" class="hidden text-green-500 text-xs font-bold text-center bg-green-900/20 py-2 mt-2">สมัครสมาชิกสำเร็จ! กำลังพาไปหน้าเข้าสู่ระบบ...</div>
+                    <button type="submit" class="w-full clip-button bg-[#1d3557] hover:bg-blue-600 text-white font-head text-2xl py-3 mt-4 transition-all duration-300 hover:shadow-[0_0_15px_rgba(69,123,157,0.5)] flex justify-center items-center">สมัครสมาชิก</button>
+                    <div class="text-center mt-4 border-t border-[#333] pt-4">
+                        <a href="#" id="show-login" class="text-gray-500 hover:text-white text-sm font-mono tracking-wider transition-colors"><< ยกเลิกและกลับไปหน้าเข้าสู่ระบบ</a>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- ================= MAIN CONTENT ================= -->
+    <div id="main-content" class="hidden opacity-0 transition-opacity duration-1000 ease-in-out">
+
+        <nav class="fixed top-0 w-full bg-[#1a1b1a]/95 border-b border-[#3a4a34] z-40 backdrop-blur-sm">
+            <div class="max-w-6xl mx-auto px-4 py-3 flex flex-col md:flex-row justify-between items-center gap-4">
+                <div class="font-head text-3xl text-[#526649]">OPERATION<span class="text-red-600">: PORTAL</span></div>
+                <ul class="flex flex-wrap justify-center gap-4 md:gap-8 text-sm font-bold tracking-wider uppercase">
+                    <li><a href="#" data-page="home" class="nav-link hover:text-red-500 transition-colors">หน้าแรก</a></li>
+                    <li><a href="#" data-page="brief" class="nav-link hover:text-red-500 transition-colors">เกี่ยวกับโปรเจกต์</a></li>
+                    <li><a href="#" data-page="game" class="nav-link hover:text-red-500 transition-colors">เล่นเกม</a></li>
+                    <li><a href="#" data-page="store" class="nav-link text-yellow-500 hover:text-yellow-400 transition-colors flex items-center gap-1">
+                        <svg class="w-4 h-4 inline" fill="currentColor" viewBox="0 0 20 20"><path d="M3 1a1 1 0 000 2h1.22l.305 1.222a.997.997 0 00.01.042l1.358 5.43-.893.892C3.74 11.846 4.632 14 6.414 14H15a1 1 0 000-2H6.414l1-1H14a1 1 0 00.894-.553l3-6A1 1 0 0017 3H6.28l-.31-1.243A1 1 0 005 1H3z"/></svg>
+                        คลังแสง
+                    </a></li>
+                    <li><a href="#" data-page="tech" class="nav-link hover:text-red-500 transition-colors">โค้ด & เทคโนโลยี</a></li>
+                    <li><a href="#" data-page="quiz" class="nav-link hover:text-[#526649] transition-colors text-green-500">แบบทดสอบ</a></li>
+                    <li><a href="#" id="logout-btn" class="nav-link text-gray-500 hover:text-white transition-colors">ออกจากระบบ</a></li>
+                </ul>
+            </div>
+        </nav>
+
+        <div class="max-w-5xl mx-auto px-4 pt-24 pb-20">
+
+            <!-- ============ PAGE: HOME ============ -->
+            <div id="page-home" class="page-view">
+                <header class="min-h-[80vh] flex flex-col justify-center items-center text-center px-4 relative">
+                    <div class="absolute inset-0 z-[-1] opacity-30" style="background-image: repeating-linear-gradient(45deg, #111 0px, #111 2px, transparent 2px, transparent 4px);"></div>
+                    <h1 class="font-head text-6xl md:text-8xl text-white mb-4 drop-shadow-[3px_3px_0_rgba(211,47,47,1)]">โปรเจกต์ โค้ดเกม</h1>
+                    <p class="text-[#526649] text-xl md:text-2xl mb-8 tracking-widest font-mono">เว็บไซต์นำเสนอโปรเจกต์เขียนโค้ดเกม</p>
+                    <a href="#" data-page="game" class="nav-link clip-button bg-[#3a4a34] hover:bg-red-700 text-white font-head text-3xl px-12 py-4 transition-all duration-300 hover:-translate-y-1 hover:shadow-[0_0_25px_rgba(211,47,47,0.6)]">
+                        ไปเล่นเกมเลย
+                    </a>
+                </header>
+            </div>
+
+            <!-- ============ PAGE: BRIEF ============ -->
+            <div id="page-brief" class="page-view">
+                <h2 class="font-head text-5xl mb-8 section-title">เกี่ยวกับโปรเจกต์</h2>
+                <div class="grid md:grid-cols-2 gap-8 mb-8">
+                    <div class="bg-[#1a1b1a] p-8 border border-[#333] clip-box tactical-border hover:border-[#526649] transition-colors">
+                        <h3 class="font-head text-3xl text-white mb-4">แนวคิด & วัตถุประสงค์</h3>
+                        <p class="text-gray-400 mb-4">โปรเจกต์นี้เป็นเว็บไซต์รวมเกม (Game Portal) ออกแบบในธีมทหาร/ยุทธวิธี จัดทำขึ้นเพื่อ:</p>
+                        <ul class="space-y-2 text-gray-300">
+                            <li class="flex items-start"><span class="text-red-500 font-bold mr-2">></span> เรียนรู้การทำเว็บแบบ Single Page Application (SPA) ที่สลับหน้าด้วย JavaScript โดยไม่ต้องโหลดหน้าใหม่</li>
+                            <li class="flex items-start"><span class="text-red-500 font-bold mr-2">></span> เรียนรู้การฝังเกม (embed) จากแพลตฟอร์มภายนอกด้วย <code class="text-green-400 bg-black px-1 rounded">iframe</code></li>
+                            <li class="flex items-start"><span class="text-red-500 font-bold mr-2">></span> ฝึกออกแบบ UI/UX ด้วย CSS โดยใช้ clip-path สร้างมุมตัดสไตล์ทหาร</li>
+                            <li class="flex items-start"><span class="text-red-500 font-bold mr-2">></span> ฝึกเขียนระบบโต้ตอบ (login, คลังแสง, แบบทดสอบ) ด้วย Vanilla JavaScript</li>
+                        </ul>
+                    </div>
+                    <div class="bg-[#1a1b1a] p-8 border border-[#333] clip-box tactical-border hover:border-[#526649] transition-colors">
+                        <h3 class="font-head text-3xl text-white mb-4">โครงสร้างระบบ (Architecture)</h3>
+                        <p class="text-gray-400 mb-4">เว็บไซต์นี้แบ่งออกเป็น 4 ส่วนหลัก:</p>
+                        <ul class="space-y-3 text-gray-300 font-mono text-sm">
+                            <li class="border-l-2 border-red-600 pl-3"><span class="text-white font-bold">[01] ระบบเข้าสู่ระบบ</span><br><span class="text-gray-500 text-xs">หน้า Login / สมัครสมาชิก</span></li>
+                            <li class="border-l-2 border-yellow-600 pl-3"><span class="text-white font-bold">[02] หน้าหลัก</span><br><span class="text-gray-500 text-xs">หน้าแรกและเมนูนำทาง</span></li>
+                            <li class="border-l-2 border-green-600 pl-3"><span class="text-white font-bold">[03] หน้าเล่นเกม</span><br><span class="text-gray-500 text-xs">ฝังเกมด้วย iframe</span></li>
+                            <li class="border-l-2 border-blue-600 pl-3"><span class="text-white font-bold">[04] แบบทดสอบ</span><br><span class="text-gray-500 text-xs">แบบทดสอบความรู้แบบโต้ตอบ</span></li>
+                        </ul>
+                    </div>
+                </div>
+                <div class="bg-[#050505] p-6 border border-[#333] border-t-4 border-t-red-600 relative overflow-hidden">
+                    <div class="absolute -right-10 -top-10 opacity-5 font-head text-[10rem] text-white pointer-events-none">TOP SECRET</div>
+                    <h3 class="font-head text-2xl text-red-500 mb-3 relative z-10">เทคโนโลยีที่ใช้</h3>
+                    <div class="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm font-mono text-gray-400 relative z-10">
+                        <div><span class="block text-gray-600">STYLING FRAMEWORK:</span><span class="text-white font-bold">TAILWIND CSS</span></div>
+                        <div><span class="block text-gray-600">APPLICATION LOGIC:</span><span class="text-white font-bold">VANILLA JS (ES6+)</span></div>
+                        <div><span class="block text-gray-600">GAME ENGINE (EMBED):</span><span class="text-white font-bold">HTML5 / CANVAS API</span></div>
+                        <div><span class="block text-gray-600">DEVICE SUPPORT:</span><span class="text-green-500 font-bold">FULLY RESPONSIVE</span></div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- ============ PAGE: GAME ============ -->
+            <div id="page-game" class="page-view">
+                <div class="text-center mb-8">
+                    <h2 class="font-head text-5xl section-title">หน้าเล่นเกม</h2>
+                    <p class="text-gray-500 mt-4 tracking-widest uppercase text-sm">รองรับการเล่นบนทุกขนาดหน้าจอ</p>
+                </div>
+                <div class="grid md:grid-cols-4 gap-6">
+                    <div class="md:col-span-1 space-y-4">
+                        <div class="bg-[#1a1b1a] border border-[#333] p-5 clip-box tactical-border">
+                            <h4 class="font-head text-2xl text-red-500 mb-2 border-b border-red-900 pb-2">วิธีเล่น</h4>
+                            <p class="text-xs text-gray-400 mb-3">เกมยิงปืนสไนเปอร์ เล็งและยิงเป้าหมายให้แม่นที่สุด</p>
+                            <ul class="text-sm text-gray-300 space-y-3 font-mono mt-3">
+                                <li class="flex items-center gap-2"><span class="bg-gray-800 text-white px-2 py-1 rounded text-xs border border-gray-600">MOUSE</span> เล็งเป้า</li>
+                                <li class="flex items-center gap-2"><span class="bg-gray-800 text-white px-2 py-1 rounded text-xs border border-gray-600">L-CLICK</span> ยิงปืน</li>
+                            </ul>
+                        </div>
+                        <div class="bg-black border border-[#333] p-4 text-center clip-box">
+                            <span class="block text-gray-500 text-xs font-mono mb-1">สถานะการเชื่อมต่อ</span>
+                            <span class="text-green-500 font-bold animate-pulse text-sm font-mono">เชื่อมต่อปกติ</span>
+                        </div>
+                    </div>
+                    <div class="md:col-span-3 flex justify-center items-center w-full">
+                        <div class="w-full max-w-[800px] aspect-[4/3] bg-gradient-to-br from-[#3a4a34] to-[#d32f2f] p-1 clip-iframe shadow-[0_0_40px_rgba(0,0,0,0.8)] relative group">
+                            <div class="absolute inset-0 bg-black animate-pulse opacity-50 group-hover:opacity-0 transition-opacity pointer-events-none z-10"></div>
+                            <iframe id="game-iframe" data-src="https://html5.gamemonetize.games/faj3w69flisi32koxs0ea4h1tawgogu8/" class="w-full h-full bg-black clip-iframe border-none" allowfullscreen scrolling="no"></iframe>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- ============ PAGE: ARMORY (brand links) ============ -->
+            <div id="page-store" class="page-view">
+                <div class="text-center mb-10">
+                    <div class="inline-block px-3 py-1 bg-yellow-900/30 border border-yellow-600/50 text-yellow-500 text-xs font-mono mb-2 tracking-widest uppercase">พันธมิตรแบรนด์อุปกรณ์</div>
+                    <h2 class="font-head text-5xl section-title text-yellow-500 border-yellow-500">คลังแสง</h2>
+                    <p class="text-gray-400 mt-4 tracking-widest uppercase text-sm max-w-2xl mx-auto">กดที่โลโก้แบรนด์เพื่อไปยังเว็บไซต์อย่างเป็นทางการของแต่ละแบรนด์</p>
+                </div>
+
+                <div class="grid grid-cols-2 md:grid-cols-3 gap-6" id="brand-grid">
+                    <a href="https://www.waroxairsoft.com/" target="_blank" rel="noopener noreferrer" class="brand-card group bg-[#1a1b1a] border border-[#333] hover:border-yellow-500 clip-box p-8 flex flex-col items-center justify-center gap-3 transition-all duration-300 hover:-translate-y-1">
+                        <div class="font-head text-4xl text-white group-hover:text-yellow-400 transition-colors tracking-widest">WAROX</div>
+                        <span class="text-xs text-gray-500 font-mono uppercase">AIRSOFT</span>
+                    </a>
+                    <a href="https://wroom.com.ua/en" target="_blank" rel="noopener noreferrer" class="brand-card group bg-[#1a1b1a] border border-[#333] hover:border-yellow-500 clip-box p-8 flex flex-col items-center justify-center gap-3 transition-all duration-300 hover:-translate-y-1">
+                        <div class="font-head text-4xl text-white group-hover:text-yellow-400 transition-colors tracking-widest">WROOM</div>
+                        <span class="text-xs text-gray-500 font-mono uppercase">STORE</span>
+                    </a>
+                    <a href="https://www.blackhawk.com" target="_blank" rel="noopener noreferrer" class="brand-card group bg-[#1a1b1a] border border-[#333] hover:border-yellow-500 clip-box p-8 flex flex-col items-center justify-center gap-3 transition-all duration-300 hover:-translate-y-1">
+                        <div class="font-head text-4xl text-white group-hover:text-yellow-400 transition-colors tracking-widest">BLACKHAWK</div>
+                        <span class="text-xs text-gray-500 font-mono uppercase">GEAR</span>
+                    </a>
+                    <a href="https://magpul.com" target="_blank" rel="noopener noreferrer" class="brand-card group bg-[#1a1b1a] border border-[#333] hover:border-yellow-500 clip-box p-8 flex flex-col items-center justify-center gap-3 transition-all duration-300 hover:-translate-y-1">
+                        <div class="font-head text-4xl text-white group-hover:text-yellow-400 transition-colors tracking-widest">MAGPUL</div>
+                        <span class="text-xs text-gray-500 font-mono uppercase">EQUIPMENT</span>
+                    </a>
+                    <a href="https://punisher.com.ua/en/" target="_blank" rel="noopener noreferrer" class="brand-card group bg-[#1a1b1a] border border-[#333] hover:border-yellow-500 clip-box p-8 flex flex-col items-center justify-center gap-3 transition-all duration-300 hover:-translate-y-1">
+                        <div class="font-head text-4xl text-white group-hover:text-yellow-400 transition-colors tracking-widest">PUNISHER</div>
+                        <span class="text-xs text-gray-500 font-mono uppercase">STORE</span>
+                    </a>
+                    <a href="https://www.damascusgear.com/" target="_blank" rel="noopener noreferrer" class="brand-card group bg-[#1a1b1a] border border-[#333] hover:border-yellow-500 clip-box p-8 flex flex-col items-center justify-center gap-3 transition-all duration-300 hover:-translate-y-1">
+                        <div class="font-head text-4xl text-white group-hover:text-yellow-400 transition-colors tracking-widest">DAMASCUS</div>
+                        <span class="text-xs text-gray-500 font-mono uppercase">GEAR</span>
+                    </a>
+                </div>
+
+                <p class="text-center text-gray-600 text-xs font-mono mt-8">* โลโก้ที่แสดงเป็นตัวอักษรจำลองเท่านั้น ไม่ใช่โลโก้จริงของแบรนด์ ลิงก์จะพาไปยังเว็บไซต์ทางการของแต่ละแบรนด์โดยตรง</p>
+            </div>
+
+            <!-- ============ PAGE: TECH ============ -->
+            <div id="page-tech" class="page-view">
+                <h2 class="font-head text-5xl mb-8 section-title">โค้ด & เทคโนโลยีที่ใช้</h2>
+                <div class="grid md:grid-cols-3 gap-8">
+                    <div class="md:col-span-1 space-y-4">
+                        <div class="bg-[#1a1b1a] p-6 border-l-4 border-[#526649] hover:bg-[#222] transition-colors">
+                            <h4 class="font-head text-2xl text-white mb-2">HTML5 / Iframe</h4>
+                            <p class="text-sm text-gray-400">iframe ช่วยแยกเกมออกจากหน้าเว็บหลัก ทำให้ปลอดภัยและไม่กระทบกับส่วนอื่นของเว็บ</p>
+                        </div>
+                        <div class="bg-[#1a1b1a] p-6 border-l-4 border-red-600 hover:bg-[#222] transition-colors">
+                            <h4 class="font-head text-2xl text-white mb-2">Tailwind CSS & Clip-path</h4>
+                            <p class="text-sm text-gray-400">ใช้ Tailwind จัดการ layout และเขียน CSS เพิ่มเติมด้วย <code class="text-red-400">clip-path</code> เพื่อสร้างมุมตัดตามธีมทหาร</p>
+                        </div>
+                        <div class="bg-[#1a1b1a] p-6 border-l-4 border-yellow-600 hover:bg-[#222] transition-colors">
+                            <h4 class="font-head text-2xl text-white mb-2">Vanilla JS</h4>
+                            <p class="text-sm text-gray-400">ใช้ควบคุมระบบ login, การสลับหน้าแบบ SPA, และคำนวณคะแนนในแบบทดสอบ</p>
+                        </div>
+                    </div>
+                    <div class="md:col-span-2 space-y-4">
+                        <div class="bg-[#050505] rounded-t-lg border border-[#333] border-t-[20px] border-t-[#222] relative shadow-lg">
+                            <div class="absolute -top-[18px] left-2 flex gap-1.5">
+                                <div class="w-3 h-3 rounded-full bg-red-500"></div>
+                                <div class="w-3 h-3 rounded-full bg-yellow-500"></div>
+                                <div class="w-3 h-3 rounded-full bg-green-500"></div>
+                            </div>
+                            <div class="absolute -top-[20px] right-3 text-xs font-mono text-gray-500">SPA_Router.js</div>
+                            <div class="p-4 overflow-x-auto">
+<pre class="font-mono text-sm leading-relaxed text-gray-300">
+<span class="text-gray-500">// ฟังก์ชันสลับหน้าแบบไม่ต้องรีเฟรช</span>
+<span class="text-purple-300">function</span> <span class="text-yellow-300">showPage</span>(pageName) {
+    document.querySelectorAll(<span class="text-green-400">'.page-view'</span>).forEach(p => {
+        p.classList.remove(<span class="text-green-400">'active'</span>);
+    });
+    document.getElementById(<span class="text-green-400">'page-' + pageName</span>).classList.add(<span class="text-green-400">'active'</span>);
+}
+</pre>
+                            </div>
+                        </div>
+                        <div class="bg-[#050505] rounded-t-lg border border-[#333] border-t-[20px] border-t-[#222] relative shadow-lg">
+                            <div class="absolute -top-[18px] left-2 flex gap-1.5">
+                                <div class="w-3 h-3 rounded-full bg-gray-600"></div>
+                                <div class="w-3 h-3 rounded-full bg-gray-600"></div>
+                                <div class="w-3 h-3 rounded-full bg-gray-600"></div>
+                            </div>
+                            <div class="absolute -top-[20px] right-3 text-xs font-mono text-gray-500">Iframe_Integration.html</div>
+                            <div class="p-4 overflow-x-auto">
+<pre class="font-mono text-sm leading-relaxed text-gray-300">
+<span class="text-blue-400">&lt;iframe</span>
+    <span class="text-blue-200">src</span>=<span class="text-green-400">"https://html5.gamemonetize.games/..."</span>
+    <span class="text-blue-200">allowfullscreen</span>=<span class="text-green-400">"true"</span>
+    <span class="text-blue-200">class</span>=<span class="text-green-400">"w-full h-full border-none bg-black"</span><span class="text-blue-400">&gt;</span>
+<span class="text-blue-400">&lt;/iframe&gt;</span>
+</pre>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- ============ PAGE: QUIZ ============ -->
+            <div id="page-quiz" class="page-view">
+                <h2 class="font-head text-5xl mb-8 section-title text-green-500 border-green-500">แบบทดสอบความรู้</h2>
+                <div class="bg-[#111] p-6 md:p-10 border border-[#3a4a34] clip-box tactical-border relative overflow-hidden">
+                    <div class="absolute top-4 right-4 text-[#3a4a34] font-mono text-xs">แบบทดสอบชุดที่ 1</div>
+                    <div id="quiz-intro" class="text-center py-8">
+                        <h3 class="font-head text-4xl text-white mb-4">แบบทดสอบสำหรับนักพัฒนาเกม</h3>
+                        <p class="text-gray-400 mb-8 max-w-lg mx-auto">ทดสอบความรู้เกี่ยวกับการพัฒนาเว็บเกม HTML5 และการใช้งาน iframe มีทั้งหมด 5 ข้อ</p>
+                        <button onclick="startQuiz()" class="clip-button bg-green-800 hover:bg-green-600 text-white font-head text-2xl px-8 py-3 transition-colors">เริ่มทำแบบทดสอบ</button>
+                    </div>
+                    <div id="quiz-container" class="hidden">
+                        <div class="flex justify-between items-center mb-6 font-mono text-sm text-gray-500 border-b border-[#333] pb-2">
+                            <span id="quiz-progress">คำถามที่ 1 จาก 5</span>
+                            <span class="text-red-500 animate-pulse">กำลังทำแบบทดสอบ</span>
+                        </div>
+                        <h3 id="question-text" class="text-xl md:text-2xl text-white mb-6 font-bold min-h-[4rem]"></h3>
+                        <div id="options-container" class="space-y-3"></div>
+                        <div id="feedback-box" class="hidden mt-6 p-4 border clip-box">
+                            <h4 id="feedback-title" class="font-bold text-lg mb-2"></h4>
+                            <p id="feedback-desc" class="text-gray-300 text-sm"></p>
+                            <button onclick="nextQuestion()" id="next-btn" class="mt-4 bg-[#3a4a34] hover:bg-[#526649] text-white px-6 py-2 font-head tracking-wider transition-colors">ข้อต่อไป</button>
+                        </div>
+                    </div>
+                    <div id="quiz-results" class="hidden text-center py-8">
+                        <h3 class="font-head text-5xl text-white mb-2">ทำแบบทดสอบเสร็จแล้ว</h3>
+                        <p class="text-gray-400 text-lg mb-6">คะแนนที่คุณทำได้:</p>
+                        <div class="text-6xl font-head text-green-500 mb-8" id="final-score">0 / 5</div>
+                        <p id="score-message" class="text-xl mb-8 font-bold text-white"></p>
+                        <button onclick="resetQuiz()" class="clip-button border-2 border-green-500 text-green-500 hover:bg-green-500 hover:text-black font-head text-2xl px-8 py-3 transition-colors">ทำแบบทดสอบใหม่</button>
+                    </div>
+                </div>
+            </div>
+
+        </div>
+
+        <footer class="bg-black py-8 border-t border-[#333] text-center">
+            <p class="text-gray-600 font-mono text-sm">พอร์ทัลรวมเกม HTML5 &copy; 2024</p>
+        </footer>
+    </div>
+
+    <!-- Store Modal -->
+    <div id="store-modal" class="hidden fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm p-4">
+        <div class="relative w-full max-w-xl bg-[#111] border border-yellow-600 clip-box p-6 shadow-[0_0_40px_rgba(202,138,4,0.3)] tactical-border">
+            <div class="flex justify-between items-center mb-6 border-b border-[#333] pb-3">
+                <h3 class="font-head text-3xl text-yellow-500 tracking-wider">รายการสั่งซื้อของคุณ</h3>
+                <button onclick="closeCartModal()" class="text-gray-400 hover:text-white font-mono text-xl">✕</button>
+            </div>
+            <div id="cart-items-list" class="space-y-3 max-h-60 overflow-y-auto mb-6 pr-2"></div>
+            <div class="bg-[#0a0a0a] p-4 border border-[#333] mb-6 flex justify-between items-center">
+                <span class="font-mono text-gray-400 text-sm">ยอดรวมทั้งหมด:</span>
+                <span id="cart-total-price" class="font-head text-3xl text-yellow-500">$0 USD</span>
+            </div>
+            <div class="flex gap-4">
+                <button onclick="closeCartModal()" class="w-1/2 border border-gray-600 text-gray-400 hover:text-white font-head py-3 text-xl clip-button">ยกเลิก / ปิดหน้าต่าง</button>
+                <button onclick="submitRequisition()" class="w-1/2 bg-yellow-600 hover:bg-yellow-500 text-black font-head py-3 text-xl clip-button transition-colors">ยืนยันการสั่งซื้อ</button>
+            </div>
+        </div>
+    </div>
+
+<script>
+    // ==========================================
+    // SPA ROUTER - สลับหน้าโดยไม่รีโหลด
+    // ==========================================
+    function showPage(pageName) {
+        document.querySelectorAll('.page-view').forEach(p => p.classList.remove('active'));
+        const target = document.getElementById('page-' + pageName);
+        if (target) target.classList.add('active');
+
+        document.querySelectorAll('.nav-link[data-page]').forEach(link => {
+            link.classList.toggle('current', link.dataset.page === pageName);
+        });
+
+        // โหลดเกมเข้า iframe เฉพาะตอนเปิดหน้า game ครั้งแรก (ประหยัดโหลด)
+        if (pageName === 'game') {
+            const iframe = document.getElementById('game-iframe');
+            if (iframe && !iframe.src) iframe.src = iframe.dataset.src;
+        }
+
+        window.scrollTo({ top: 0, behavior: 'instant' });
+    }
+
+    document.querySelectorAll('.nav-link[data-page]').forEach(link => {
+        link.addEventListener('click', (e) => {
+            e.preventDefault();
+            showPage(link.dataset.page);
+        });
+    });
+
+    // ==========================================
+    // AUTHENTICATION SYSTEM LOGIC
+    // ==========================================
+    const usersDB = { 'COMMANDER': 'admin123' };
+
+    const loginView = document.getElementById('login-view');
+    const registerView = document.getElementById('register-view');
+    const loginForm = document.getElementById('login-form');
+    const registerForm = document.getElementById('register-form');
+    const showRegisterBtn = document.getElementById('show-register');
+    const showLoginBtn = document.getElementById('show-login');
+    const loginError = document.getElementById('login-error');
+    const registerError = document.getElementById('register-error');
+    const registerSuccess = document.getElementById('register-success');
+    const loginScreen = document.getElementById('login-screen');
+    const mainContent = document.getElementById('main-content');
+
+    showRegisterBtn.addEventListener('click', (e) => {
+        e.preventDefault();
+        loginView.classList.add('hidden');
+        registerView.classList.remove('hidden');
+        registerForm.reset();
+        registerError.classList.add('hidden');
+        registerSuccess.classList.add('hidden');
+    });
+
+    showLoginBtn.addEventListener('click', (e) => {
+        e.preventDefault();
+        registerView.classList.add('hidden');
+        loginView.classList.remove('hidden');
+    });
+
+    registerForm.addEventListener('submit', function(e) {
+        e.preventDefault();
+        const newUser = document.getElementById('reg-username').value.trim().toUpperCase();
+        const newPass = document.getElementById('reg-password').value;
+        const confirmPass = document.getElementById('reg-confirm').value;
+        registerError.classList.add('hidden');
+
+        if (usersDB[newUser]) {
+            registerError.textContent = "ชื่อผู้ใช้นี้มีคนใช้แล้ว กรุณาเปลี่ยนชื่อใหม่";
+            registerError.classList.remove('hidden');
+            return;
+        }
+        if (newPass !== confirmPass) {
+            registerError.textContent = "รหัสผ่านที่ยืนยันไม่ตรงกัน กรุณาตรวจสอบอีกครั้ง";
+            registerError.classList.remove('hidden');
+            return;
+        }
+
+        usersDB[newUser] = newPass;
+        registerSuccess.classList.remove('hidden');
+        setTimeout(() => {
+            registerView.classList.add('hidden');
+            loginView.classList.remove('hidden');
+            document.getElementById('username').value = newUser;
+            document.getElementById('password').value = '';
+            document.getElementById('password').focus();
+        }, 1500);
+    });
+
+    loginForm.addEventListener('submit', function(e) {
+        e.preventDefault();
+        const user = document.getElementById('username').value.trim().toUpperCase();
+        const pass = document.getElementById('password').value;
+
+        if (usersDB[user] && usersDB[user] === pass) {
+            loginError.classList.add('hidden');
+            const submitBtn = loginForm.querySelector('button[type="submit"]');
+            submitBtn.innerHTML = "กำลังเข้าสู่ระบบ... <span class='w-2 h-2 bg-white rounded-full animate-blink'></span>";
+
+            setTimeout(() => {
+                loginScreen.style.opacity = '0';
+                setTimeout(() => {
+                    loginScreen.style.display = 'none';
+                    mainContent.classList.remove('hidden');
+                    setTimeout(() => {
+                        mainContent.style.opacity = '1';
+                        showPage('home'); // เข้าสู่หน้าแรกหลังล็อกอินสำเร็จ
+                    }, 50);
+                }, 500);
+            }, 800);
+        } else {
+            loginError.textContent = "เข้าสู่ระบบไม่สำเร็จ: ชื่อผู้ใช้หรือรหัสผ่านไม่ถูกต้อง";
+            loginError.classList.remove('hidden');
+        }
+    });
+
+    document.getElementById('logout-btn').addEventListener('click', (e) => {
+        e.preventDefault();
+        mainContent.style.opacity = '0';
+        setTimeout(() => {
+            mainContent.classList.add('hidden');
+            loginScreen.style.display = 'flex';
+            setTimeout(() => { loginScreen.style.opacity = '1'; }, 20);
+            loginForm.reset();
+            document.getElementById('username').value = 'COMMANDER';
+            document.getElementById('password').value = 'admin123';
+        }, 300);
+    });
+
+    // ==========================================
+    // US ARMOR TACTICAL STORE LOGIC
+    // ==========================================
+    const productsDB = [
+        { id: "USA-ARM-01", category: "armor", name: "US Armor Enforcer IV Concealable Vest", badge: "NIJ Level IIIA", spec: "เกราะซ่อนภายในน้ำหนักเบาพิเศษ ผลิตจากเส้นใย Aramid เกรดสูงสุด ป้องกันกระสุนปืนสั้นได้ถึงขนาด .44 Magnum", price: 850, rating: "NIJ 0101.06 Certified", icon: `<svg class="w-16 h-16 text-yellow-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z"/></svg>` },
+        { id: "USA-CAR-02", category: "carrier", name: "Ranger Tactical Outer Carrier (TOC)", badge: "Tactical MOLLE", spec: "เสื้อเวสต์ยุทธวิธีภายนอก ออกแบบรองรับระบบ MOLLE Webbing เต็มรูปแบบ สำหรับติดตั้งช่องกระสุนและยุทโธปกรณ์เสริม", price: 620, rating: "Heavy Duty Cordura 1000D", icon: `<svg class="w-16 h-16 text-yellow-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z"/></svg>` },
+        { id: "USA-PLT-03", category: "plate", name: "Level IV Ceramic Ballistic Rifle Plate", badge: "NIJ Level IV (Hard Armor)", spec: "แผ่นเกราะเซรามิกแข็ง ทนทานต่อกระสุนเจาะเกราะปืนไรเฟิลขนาด 7.62mm AP (Armor Piercing) แบบ Single-Curve", price: 490, rating: "Stand-Alone AP Protection", icon: `<svg class="w-16 h-16 text-yellow-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4"/></svg>` },
+        { id: "USA-HLM-04", category: "helmet", name: "FAST Tactical Ballistic Helmet", badge: "NIJ Level IIIA", spec: "หมวกเหล็กยุทธวิธีทรงน้ำหนักเบา พร้อมราง Side Rails สำหรับติดกล้องอินฟราเรด ไฟฉาย และสายหูฟังยุทธวิธี", price: 1120, rating: "V50 Ballistic Exceeded", icon: `<svg class="w-16 h-16 text-yellow-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707"/></svg>` },
+        { id: "USA-SHD-05", category: "helmet", name: "Tactical Entry Ballistic Shield w/ Viewport", badge: "NIJ Level III", spec: "โล่ป้องกันกระสุนยุทธวิธีสำหรับหน่วยบุกเข้าชาร์จ (Entry Team) พร้อมกระจกมองผ่านกันกระสุนและไฟ LED กำลังสูง", price: 2400, rating: "Handheld Rifle Shield", icon: `<svg class="w-16 h-16 text-yellow-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M8 11V7a4 4 0 118 0v4m-4 8v-4m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2z"/></svg>` },
+        { id: "USA-PLT-06", category: "plate", name: "Ultra-Light PE Level III Rifle Plate", badge: "NIJ Level III PE", spec: "แผ่นเกราะโพลีเอทิลีนความหนาแน่นสูง ลอยน้ำได้ น้ำหนักเบาเพียง 1.2 กก. ป้องกันกระสุนปืนไรเฟิลขนาด 5.56mm / 7.62mm Standard", price: 380, rating: "Ultra-Lightweight 1.2kg", icon: `<svg class="w-16 h-16 text-yellow-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M13 10V3L4 14h7v7l9-11h-7z"/></svg>` }
+    ];
+
+    let cart = [];
+    let activeCategory = 'all';
+
+    function renderProducts(products) {
+        const grid = document.getElementById('product-grid');
+        if (!grid) return;
+        grid.innerHTML = '';
+        if (products.length === 0) {
+            grid.innerHTML = `<div class="col-span-full py-12 text-center bg-[#111] border border-[#333] clip-box"><p class="text-gray-500 font-mono text-lg">ไม่พบสินค้าที่ตรงกับการค้นหา</p></div>`;
+            return;
+        }
+        products.forEach(p => {
+            const card = document.createElement('div');
+            card.className = 'bg-[#1a1b1a] border border-[#333] hover:border-yellow-600 p-6 clip-box tactical-border flex flex-col justify-between transition-all duration-300 group';
+            card.innerHTML = `
+                <div>
+                    <div class="flex justify-between items-start mb-4">
+                        <span class="bg-yellow-900/40 text-yellow-400 border border-yellow-600/50 text-xs font-mono px-2 py-1">${p.badge}</span>
+                        <span class="text-xs font-mono text-gray-500">${p.id}</span>
+                    </div>
+                    <div class="flex justify-center py-6 group-hover:scale-105 transition-transform">${p.icon}</div>
+                    <h3 class="font-head text-2xl text-white mb-2 group-hover:text-yellow-400 transition-colors">${p.name}</h3>
+                    <p class="text-xs text-gray-400 mb-4 font-mono leading-relaxed">${p.spec}</p>
+                </div>
+                <div class="pt-4 border-t border-[#333]">
+                    <div class="flex justify-between items-center mb-4">
+                        <span class="text-xs text-gray-500 font-mono">${p.rating}</span>
+                        <span class="font-head text-2xl text-yellow-500">$${p.price.toLocaleString()} USD</span>
+                    </div>
+                    <button onclick="addToCart('${p.id}')" class="w-full clip-button bg-[#282617] hover:bg-yellow-600 border border-yellow-600 text-yellow-400 hover:text-black font-head py-2 text-xl transition-all flex justify-center items-center gap-2">
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"/></svg>
+                        เพิ่มลงตะกร้า
+                    </button>
+                </div>
+            `;
+            grid.appendChild(card);
+        });
+    }
+
+    function filterProducts(category, btnEl) {
+        activeCategory = category;
+        document.querySelectorAll('.store-filter-btn').forEach(btn => {
+            btn.classList.remove('bg-yellow-600', 'text-black');
+            btn.classList.add('bg-[#1a1b1a]', 'text-gray-300');
+        });
+        if (btnEl) {
+            btnEl.classList.remove('bg-[#1a1b1a]', 'text-gray-300');
+            btnEl.classList.add('bg-yellow-600', 'text-black');
+        }
+        applyFilterAndSearch(category, document.getElementById('store-search').value.toLowerCase());
+    }
+
+    function searchProducts() {
+        applyFilterAndSearch(activeCategory, document.getElementById('store-search').value.toLowerCase());
+    }
+
+    function applyFilterAndSearch(category, query) {
+        let filtered = productsDB;
+        if (category !== 'all') filtered = filtered.filter(p => p.category === category);
+        if (query) filtered = filtered.filter(p => p.name.toLowerCase().includes(query) || p.id.toLowerCase().includes(query) || p.spec.toLowerCase().includes(query));
+        renderProducts(filtered);
+    }
+
+    function addToCart(productId) {
+        const item = productsDB.find(p => p.id === productId);
+        if (!item) return;
+        const existing = cart.find(c => c.id === productId);
+        if (existing) existing.qty += 1; else cart.push({ ...item, qty: 1 });
+        updateCartUI();
+        showToast(`เพิ่ม [${item.id}] ลงตะกร้าแล้ว`);
+    }
+
+    function updateCartUI() {
+        const countEl = document.getElementById('cart-count');
+        if (countEl) countEl.textContent = cart.reduce((acc, curr) => acc + curr.qty, 0);
+    }
+
+    function openCartModal() {
+        const modal = document.getElementById('store-modal');
+        const cartItemsContainer = document.getElementById('cart-items-list');
+        const cartTotal = document.getElementById('cart-total-price');
+        if (!modal) return;
+        cartItemsContainer.innerHTML = '';
+        let total = 0;
+        if (cart.length === 0) {
+            cartItemsContainer.innerHTML = `<p class="text-center text-gray-500 font-mono py-8">ยังไม่มีสินค้าในตะกร้า</p>`;
+        } else {
+            cart.forEach(item => {
+                const subtotal = item.price * item.qty;
+                total += subtotal;
+                const row = document.createElement('div');
+                row.className = 'flex justify-between items-center bg-[#0a0a0a] p-3 border border-[#333] clip-box font-mono text-xs';
+                row.innerHTML = `
+                    <div>
+                        <p class="text-white font-bold">${item.name}</p>
+                        <p class="text-gray-500">${item.id} | $${item.price} USD x ${item.qty}</p>
+                    </div>
+                    <div class="flex items-center gap-3">
+                        <span class="text-yellow-500 font-bold">$${subtotal.toLocaleString()}</span>
+                        <button onclick="removeFromCart('${item.id}')" class="text-red-500 hover:text-red-400 font-bold px-2 py-1 bg-red-900/20 border border-red-800">X</button>
+                    </div>
+                `;
+                cartItemsContainer.appendChild(row);
+            });
+        }
+        cartTotal.textContent = `$${total.toLocaleString()} USD`;
+        modal.classList.remove('hidden');
+    }
+
+    function removeFromCart(productId) {
+        cart = cart.filter(c => c.id !== productId);
+        updateCartUI();
+        openCartModal();
+    }
+
+    function closeCartModal() {
+        document.getElementById('store-modal').classList.add('hidden');
+    }
+
+    function submitRequisition() {
+        if (cart.length === 0) { showToast('ยังไม่มีสินค้าในตะกร้า'); return; }
+        alert('สั่งซื้อสำเร็จ! ขอบคุณที่ใช้บริการ');
+        cart = [];
+        updateCartUI();
+        closeCartModal();
+    }
+
+    function showToast(message) {
+        let toast = document.getElementById('tactical-toast');
+        if (!toast) {
+            toast = document.createElement('div');
+            toast.id = 'tactical-toast';
+            toast.className = 'fixed bottom-6 right-6 z-50 bg-yellow-600 text-black font-head px-6 py-3 clip-button shadow-lg transition-opacity duration-300 opacity-0 pointer-events-none text-xl';
+            document.body.appendChild(toast);
+        }
+        toast.textContent = message;
+        toast.classList.remove('opacity-0', 'pointer-events-none');
+        setTimeout(() => { toast.classList.add('opacity-0', 'pointer-events-none'); }, 2500);
+    }
+
+    document.addEventListener('DOMContentLoaded', () => { renderProducts(productsDB); });
+
+    // ==========================================
+    // QUIZ SYSTEM LOGIC
+    // ==========================================
+    const quizData = [
+        { question: "แท็ก (Tag) ใดใน HTML5 ที่นิยมใช้ในการสร้างและวาดกราฟิกสำหรับเกมบนเว็บแบบ 2D?", options: ["<svg>", "<canvas>", "<video>", "<iframe>"], correct: 1, explanation: "<canvas> เป็นแท็กที่ใช้ร่วมกับ JavaScript เพื่อวาดกราฟิกและสร้างเกมประสิทธิภาพสูงบนเว็บ" },
+        { question: "เมื่อใช้ iframe ฝังเกม แอตทริบิวต์ใดที่ทำให้ผู้เล่นสามารถขยายเกมให้เต็มจอได้?", options: ["fullscreen='true'", "maximize", "allowfullscreen", "enlarge='1'"], correct: 2, explanation: "allowfullscreen เป็นแอตทริบิวต์มาตรฐานที่อนุญาตให้ iframe ใช้งานโหมด Fullscreen API ได้" },
+        { question: "ข้อดีของการใช้ iframe ในการรวมเกมภายนอกเข้ามาในเว็บของเราคืออะไร?", options: ["ทำให้เกมรันเร็วขึ้นกว่าเดิม", "ไม่ต้องเขียนโค้ดเกมเองและอัปเดตอัตโนมัติจากต้นทาง", "ทำให้เว็บของเราปลอดภัยจากการแฮ็ก 100%", "สามารถเปลี่ยนกราฟิกของเกมได้ตามต้องการ"], correct: 1, explanation: "Iframe ช่วยแยกส่วนประกอบ (Isolation) และดึงเนื้อหาจากเซิร์ฟเวอร์ผู้สร้างมาแสดงโดยตรง ลดภาระการเขียนและจัดการไฟล์เกมเอง" },
+        { question: "ในการทำเว็บไซต์สไตล์ Tactical มุมตัด (Chamfered edges) คลาส CSS ใดที่ถูกใช้สร้างรูปทรงนี้?", options: ["border-radius", "box-shadow", "transform: skew()", "clip-path: polygon()"], correct: 3, explanation: "clip-path: polygon() สามารถกำหนดจุดต่างๆ เพื่อตัดขอบกล่องให้เป็นรูปทรงมุมตัดตามพิกัด (X, Y) ได้อย่างอิสระ" },
+        { question: "ทำไมเราถึงควรกำหนด aspect-ratio ให้กับคอนเทนเนอร์ของ Iframe Game?", options: ["เพื่อรักษาสัดส่วนของเกมไม่ให้ผิดเพี้ยนเมื่อย่อ/ขยายจอ", "เพื่อเร่งความเร็วกราฟิก 3D", "เพื่อป้องกันไม่ให้เกมมีโฆษณา", "เพื่อเปลี่ยนสีพื้นหลังเกม"], correct: 0, explanation: "aspect-ratio ช่วยล็อกสัดส่วน (เช่น 4:3 หรือ 16:9) เพื่อให้เกมแสดงผลได้ถูกต้องและ Responsive ในทุกขนาดหน้าจออุปกรณ์" }
+    ];
+
+    let currentQuestion = 0;
+    let score = 0;
+    const quizIntro = document.getElementById('quiz-intro');
+    const quizContainer = document.getElementById('quiz-container');
+    const quizResults = document.getElementById('quiz-results');
+    const questionText = document.getElementById('question-text');
+    const optionsContainer = document.getElementById('options-container');
+    const quizProgress = document.getElementById('quiz-progress');
+    const feedbackBox = document.getElementById('feedback-box');
+    const feedbackTitle = document.getElementById('feedback-title');
+    const feedbackDesc = document.getElementById('feedback-desc');
+    const nextBtn = document.getElementById('next-btn');
+
+    function startQuiz() {
+        quizIntro.classList.add('hidden');
+        quizContainer.classList.remove('hidden');
+        loadQuestion();
+    }
+
+    function loadQuestion() {
+        feedbackBox.classList.add('hidden');
+        optionsContainer.innerHTML = '';
+        const q = quizData[currentQuestion];
+        questionText.textContent = q.question;
+        quizProgress.textContent = `คำถามที่ ${currentQuestion + 1} จาก ${quizData.length}`;
+        q.options.forEach((opt, index) => {
+            const btn = document.createElement('button');
+            btn.className = "w-full text-left p-4 bg-[#1a1b1a] border border-[#333] hover:border-[#526649] text-gray-300 hover:text-white transition-all text-lg";
+
+            const label = document.createElement('span');
+            label.className = "text-[#526649] mr-2 font-mono";
+            label.textContent = `[${String.fromCharCode(65 + index)}]`;
+
+            btn.appendChild(label);
+            btn.appendChild(document.createTextNode(' ' + opt));
+
+            btn.onclick = () => checkAnswer(index, btn);
+            optionsContainer.appendChild(btn);
+        });
+    }
+
+    function checkAnswer(selectedIndex, selectedButton) {
+        const buttons = optionsContainer.querySelectorAll('button');
+        buttons.forEach(btn => { btn.disabled = true; btn.classList.add('opacity-50', 'cursor-not-allowed'); });
+        const q = quizData[currentQuestion];
+        const isCorrect = (selectedIndex === q.correct);
+        if (isCorrect) {
+            score++;
+            selectedButton.classList.remove('bg-[#1a1b1a]', 'border-[#333]', 'opacity-50');
+            selectedButton.classList.add('bg-green-900', 'border-green-500', 'text-white');
+            feedbackBox.className = "mt-6 p-4 border clip-box bg-green-900/20 border-green-600 block";
+            feedbackTitle.className = "font-bold text-lg mb-2 text-green-400";
+            feedbackTitle.textContent = "ตอบถูกต้อง!";
+        } else {
+            selectedButton.classList.remove('bg-[#1a1b1a]', 'border-[#333]', 'opacity-50');
+            selectedButton.classList.add('bg-red-900', 'border-red-500', 'text-white');
+            buttons[q.correct].classList.remove('bg-[#1a1b1a]', 'border-[#333]', 'opacity-50');
+            buttons[q.correct].classList.add('border-green-500', 'text-green-400', 'opacity-100');
+            feedbackBox.className = "mt-6 p-4 border clip-box bg-red-900/20 border-red-600 block";
+            feedbackTitle.className = "font-bold text-lg mb-2 text-red-400";
+            feedbackTitle.textContent = "ตอบผิด";
+        }
+        feedbackDesc.textContent = q.explanation;
+        nextBtn.textContent = (currentQuestion === quizData.length - 1) ? "ดูผลคะแนน" : "ข้อต่อไป";
+    }
+
+    function nextQuestion() {
+        currentQuestion++;
+        if (currentQuestion < quizData.length) loadQuestion(); else showResults();
+    }
+
+    function showResults() {
+        quizContainer.classList.add('hidden');
+        quizResults.classList.remove('hidden');
+        document.getElementById('final-score').textContent = `${score} / ${quizData.length}`;
+        const msgObj = document.getElementById('score-message');
+        if (score === quizData.length) { msgObj.textContent = "ยอดเยี่ยมมาก! ตอบถูกทุกข้อ"; msgObj.className = "text-xl mb-8 font-bold text-green-500"; }
+        else if (score >= 3) { msgObj.textContent = "ทำได้ดีมาก!"; msgObj.className = "text-xl mb-8 font-bold text-yellow-500"; }
+        else { msgObj.textContent = "ลองทบทวนอีกครั้งแล้วทำใหม่นะ"; msgObj.className = "text-xl mb-8 font-bold text-red-500"; }
+    }
+
+    function resetQuiz() {
+        currentQuestion = 0; score = 0;
+        quizResults.classList.add('hidden');
+        quizIntro.classList.remove('hidden');
+    }
+</script>
+</body>
+</html>
