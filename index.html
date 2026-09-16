@@ -62,11 +62,11 @@ h1, h2, h3, .font-head { font-family: 'Bebas Neue', sans-serif; letter-spacing: 
                 <form id="login-form" class="space-y-6">
                     <div>
                         <label class="block text-gray-500 text-xs font-bold mb-2 uppercase tracking-wider">ชื่อผู้ใช้</label>
-                        <input type="text" id="username" value="COMMANDER" class="w-full bg-[#0a0a0a] border border-[#333] focus:border-[#526649] text-green-500 font-mono px-4 py-3 outline-none transition-colors" required>
+                        <input type="text" id="username" placeholder="กรอกชื่อผู้ใช้" class="w-full bg-[#0a0a0a] border border-[#333] focus:border-[#526649] text-green-500 font-mono px-4 py-3 outline-none transition-colors" required>
                     </div>
                     <div>
                         <label class="block text-gray-500 text-xs font-bold mb-2 uppercase tracking-wider">รหัสผ่าน</label>
-                        <input type="password" id="password" value="admin123" class="w-full bg-[#0a0a0a] border border-[#333] focus:border-red-600 text-red-500 font-mono px-4 py-3 outline-none transition-colors" required>
+                        <input type="password" id="password" placeholder="กรอกรหัสผ่าน" class="w-full bg-[#0a0a0a] border border-[#333] focus:border-red-600 text-red-500 font-mono px-4 py-3 outline-none transition-colors" required>
                     </div>
                     <div id="login-error" class="hidden text-red-500 text-sm font-bold text-center bg-red-900/20 py-2">เข้าสู่ระบบไม่สำเร็จ ข้อมูลไม่ถูกต้อง</div>
                     <button type="submit" class="w-full clip-button bg-[#3a4a34] hover:bg-red-700 text-white font-head text-2xl py-3 transition-all duration-300 hover:shadow-[0_0_15px_rgba(211,47,47,0.5)] flex justify-center items-center gap-2">
@@ -527,8 +527,6 @@ h1, h2, h3, .font-head { font-family: 'Bebas Neue', sans-serif; letter-spacing: 
             loginScreen.style.display = 'flex';
             setTimeout(() => { loginScreen.style.opacity = '1'; }, 20);
             loginForm.reset();
-            document.getElementById('username').value = 'COMMANDER';
-            document.getElementById('password').value = 'admin123';
         }, 300);
     });
 
