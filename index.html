@@ -407,7 +407,18 @@ h1, h2, h3, .font-head { font-family: 'Bebas Neue', sans-serif; letter-spacing: 
     // ==========================================
     // AUTHENTICATION SYSTEM LOGIC
     // ==========================================
-    const usersDB = { 'COMMANDER': 'admin123' };
+    // โหลดบัญชีผู้ใช้จาก localStorage (ถ้ายังไม่เคยมี ให้สร้างบัญชีเริ่มต้น)
+    function loadUsersDB() {
+        const stored = localStorage.getItem('usersDB');
+        if (stored) return JSON.parse(stored);
+        const initial = { 'COMMANDER': 'admin123' };
+        localStorage.setItem('usersDB', JSON.stringify(initial));
+        return initial;
+    }
+    const usersDB = loadUsersDB();
+    function saveUsersDB() {
+        localStorage.setItem('usersDB', JSON.stringify(usersDB));
+    }
 
     const loginView = document.getElementById('login-view');
     const registerView = document.getElementById('register-view');
@@ -420,6 +431,17 @@ h1, h2, h3, .font-head { font-family: 'Bebas Neue', sans-serif; letter-spacing: 
     const registerSuccess = document.getElementById('register-success');
     const loginScreen = document.getElementById('login-screen');
     const mainContent = document.getElementById('main-content');
+
+    // ถ้ามีสถานะ login ค้างอยู่ใน sessionStorage (ยังไม่ปิดแท็บ) ให้เข้าเว็บหลักทันทีโดยไม่ต้อง login ซ้ำ
+    function checkExistingSession() {
+        if (sessionStorage.getItem('loggedIn') === 'true') {
+            loginScreen.style.display = 'none';
+            mainContent.classList.remove('hidden');
+            mainContent.style.opacity = '1';
+            showPage('home');
+        }
+    }
+    checkExistingSession();
 
     showRegisterBtn.addEventListener('click', (e) => {
         e.preventDefault();
@@ -455,6 +477,7 @@ h1, h2, h3, .font-head { font-family: 'Bebas Neue', sans-serif; letter-spacing: 
         }
 
         usersDB[newUser] = newPass;
+        saveUsersDB(); // บันทึกบัญชีใหม่ลง localStorage ให้จำไว้ถาวร
         registerSuccess.classList.remove('hidden');
         setTimeout(() => {
             registerView.classList.add('hidden');
@@ -482,6 +505,8 @@ h1, h2, h3, .font-head { font-family: 'Bebas Neue', sans-serif; letter-spacing: 
                     mainContent.classList.remove('hidden');
                     setTimeout(() => {
                         mainContent.style.opacity = '1';
+                        sessionStorage.setItem('loggedIn', 'true'); // จำสถานะ login ไว้จนกว่าจะปิดแท็บ
+                        sessionStorage.setItem('username', user);
                         showPage('home'); // เข้าสู่หน้าแรกหลังล็อกอินสำเร็จ
                     }, 50);
                 }, 500);
@@ -494,6 +519,8 @@ h1, h2, h3, .font-head { font-family: 'Bebas Neue', sans-serif; letter-spacing: 
 
     document.getElementById('logout-btn').addEventListener('click', (e) => {
         e.preventDefault();
+        sessionStorage.removeItem('loggedIn');
+        sessionStorage.removeItem('username');
         mainContent.style.opacity = '0';
         setTimeout(() => {
             mainContent.classList.add('hidden');
