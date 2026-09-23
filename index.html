@@ -133,6 +133,7 @@ h1, h2, h3, .font-head { font-family: 'Bebas Neue', sans-serif; letter-spacing: 
                     </a></li>
                     <li><a href="#" data-page="tech" class="nav-link hover:text-red-500 transition-colors">โค้ด & เทคโนโลยี</a></li>
                     <li><a href="#" data-page="quiz" class="nav-link hover:text-[#526649] transition-colors text-green-500">แบบทดสอบ</a></li>
+                    <li><a href="#" data-page="credits" class="nav-link hover:text-blue-400 transition-colors">ผู้จัดทำ</a></li>
                     <li><a href="#" id="logout-btn" class="nav-link text-gray-500 hover:text-white transition-colors">ออกจากระบบ</a></li>
                 </ul>
             </div>
@@ -347,6 +348,29 @@ h1, h2, h3, .font-head { font-family: 'Bebas Neue', sans-serif; letter-spacing: 
                         <button onclick="resetQuiz()" class="clip-button border-2 border-green-500 text-green-500 hover:bg-green-500 hover:text-black font-head text-2xl px-8 py-3 transition-colors">ทำแบบทดสอบใหม่</button>
                     </div>
                 </div>
+            </div>
+
+            <!-- ============ PAGE: CREDITS ============ -->
+            <div id="page-credits" class="page-view">
+                <h2 class="font-head text-5xl mb-8 section-title text-blue-400 border-blue-400">คณะผู้จัดทำ</h2>
+                <div class="grid md:grid-cols-3 gap-6">
+                    <div class="bg-[#1a1b1a] border border-[#333] hover:border-blue-400 clip-box tactical-border p-8 text-center transition-colors">
+                        <div class="w-16 h-16 mx-auto rounded-full bg-blue-900/40 border border-blue-500 text-blue-400 flex items-center justify-center font-head text-3xl mb-4">3</div>
+                        <h4 class="font-head text-2xl text-white">ภัครวัฒน์ สิทธิอุปัชชาย์</h4>
+                        <p class="text-gray-500 text-sm font-mono mt-1">เลขที่ 3</p>
+                    </div>
+                    <div class="bg-[#1a1b1a] border border-[#333] hover:border-blue-400 clip-box tactical-border p-8 text-center transition-colors">
+                        <div class="w-16 h-16 mx-auto rounded-full bg-blue-900/40 border border-blue-500 text-blue-400 flex items-center justify-center font-head text-3xl mb-4">2</div>
+                        <h4 class="font-head text-2xl text-white">ชะนินทร ใจซื่อ</h4>
+                        <p class="text-gray-500 text-sm font-mono mt-1">เลขที่ 2</p>
+                    </div>
+                    <div class="bg-[#1a1b1a] border border-[#333] hover:border-blue-400 clip-box tactical-border p-8 text-center transition-colors">
+                        <div class="w-16 h-16 mx-auto rounded-full bg-blue-900/40 border border-blue-500 text-blue-400 flex items-center justify-center font-head text-3xl mb-4">4</div>
+                        <h4 class="font-head text-2xl text-white">วสันต์ นามวงษ์</h4>
+                        <p class="text-gray-500 text-sm font-mono mt-1">เลขที่ 4</p>
+                    </div>
+                </div>
+                <p class="text-center text-gray-600 text-xs font-mono mt-8">โปรเจกต์: Game Coding Project - Tactical Portal</p>
             </div>
 
         </div>
@@ -766,6 +790,22 @@ h1, h2, h3, .font-head { font-family: 'Bebas Neue', sans-serif; letter-spacing: 
         if (currentQuestion < quizData.length) loadQuestion(); else showResults();
     }
 
+    // ==========================================
+    // ส่งผลคะแนนแบบทดสอบไปยัง Google Sheets ผ่าน Apps Script
+    // ==========================================
+    const GOOGLE_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbyR6Ak9rTGsg4_K4fs_b4pM8tV4kPsPc6ZWb_7N9ioMfOZAnaWoo-uEsMMf1JZZ-Xsmpw/exec";
+
+    function sendScoreToSheet(name, score, total) {
+        const payload = new URLSearchParams({ name: name, score: score, total: total });
+        fetch(GOOGLE_SCRIPT_URL, {
+            method: 'POST',
+            mode: 'no-cors', // Apps Script ไม่ส่ง CORS header กลับมา จึงอ่าน response ไม่ได้ แต่ข้อมูลจะถูกบันทึกปกติ
+            body: payload
+        }).catch(err => {
+            console.error('ส่งข้อมูลไปชีตไม่สำเร็จ:', err);
+        });
+    }
+
     function showResults() {
         quizContainer.classList.add('hidden');
         quizResults.classList.remove('hidden');
@@ -774,6 +814,10 @@ h1, h2, h3, .font-head { font-family: 'Bebas Neue', sans-serif; letter-spacing: 
         if (score === quizData.length) { msgObj.textContent = "ยอดเยี่ยมมาก! ตอบถูกทุกข้อ"; msgObj.className = "text-xl mb-8 font-bold text-green-500"; }
         else if (score >= 3) { msgObj.textContent = "ทำได้ดีมาก!"; msgObj.className = "text-xl mb-8 font-bold text-yellow-500"; }
         else { msgObj.textContent = "ลองทบทวนอีกครั้งแล้วทำใหม่นะ"; msgObj.className = "text-xl mb-8 font-bold text-red-500"; }
+
+        // ส่งชื่อผู้ใช้ที่ login อยู่ (จาก sessionStorage) พร้อมคะแนนไปบันทึกใน Google Sheet
+        const currentUser = sessionStorage.getItem('username') || 'ไม่ระบุชื่อ';
+        sendScoreToSheet(currentUser, score, quizData.length);
     }
 
     function resetQuiz() {
